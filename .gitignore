@@ -1,0 +1,9 @@
+.idea/
+.cache/
+.github/
+
+tmp/
+build/
+
+*.txt
+*.log
