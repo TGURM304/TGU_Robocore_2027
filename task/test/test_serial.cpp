@@ -24,6 +24,7 @@ int main() {
         .file_path = "logs.txt"
     };
     tools::Logger::instance().init(cfg);
+    static constexpr const char* MODULE = "MAIN";
 
     io::Serial serial;
 
@@ -31,10 +32,10 @@ int main() {
 
     serial.recv<RecvPackage>([](const auto& pkt){
         if (!tools::check_crc16(reinterpret_cast<const uint8_t*>(&pkt),sizeof(RecvPackage))){
-            LOG_WARN("main","CRC校验失败");
+            LOG_WARN(MODULE,"CRC校验失败");
             return;
         }
-        LOG_INFO("main", "{}", pkt.data);
+        LOG_INFO(MODULE, "{}", pkt.data);
     });
 
     while (true) {

@@ -140,6 +140,7 @@ private:
 
     template<typename T>
     static StructParser<T> parser_;
+    static constexpr const char* MODULE = "SERIAL";
 };
 
 template<typename T>
