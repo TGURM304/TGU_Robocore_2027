@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "io/serial/serial.hpp"
+#include "tools/logger.hpp"
 #include "tools/crc.hpp"
 
 struct __attribute__((packed)) RecvPackage {
@@ -16,16 +17,24 @@ struct __attribute__((packed)) SendPackage {
 }sendpkg;
 
 int main() {
+    tools::LoggerConfig cfg{
+        .level = tools::LogLevel::Debug,
+        .enable_console = true,
+        .enable_file = false,
+        .file_path = "logs.txt"
+    };
+    tools::Logger::instance().init(cfg);
+
     io::Serial serial;
 
     serial.open("/dev/ttyACM0", 2000000);
 
     serial.recv<RecvPackage>([](const auto& pkt){
         if (!tools::check_crc16(reinterpret_cast<const uint8_t*>(&pkt),sizeof(RecvPackage))){
-            std::cerr << "CRC Error" << std::endl;
+            LOG_WARN("main","CRC校验失败");
             return;
         }
-        std::cout << pkt.data << std::endl;
+        LOG_INFO("main", std::to_string(pkt.data));
     });
 
     while (true) {

@@ -3,7 +3,7 @@
 //
 
 #include "serial.hpp"
-#include <iostream>
+#include "tools/logger.hpp"
 
 namespace io {
 
@@ -32,11 +32,11 @@ namespace io {
                 boost::asio::serial_port_base::flow_control::none));
 
             is_open_ = true;
-            std::cout << "[Serial] open success\n";
+            LOG_INFO("serial", device + " open success");
             return true;
 
         } catch (std::exception& e) {
-            std::cerr << "[Serial] open failed: " << e.what() << std::endl;
+            LOG_ERROR("serial",device + " open failed: " + e.what());
             is_open_ = false;
             return false;
         }

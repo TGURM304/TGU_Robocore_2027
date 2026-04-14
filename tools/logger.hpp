@@ -62,8 +62,14 @@ namespace tools {
 } // namespace tools
 
 
+#ifdef NDEBUG
+// Release
+#define LOG_DEBUG(module, msg) ((void)0)
+#else
+// Debug
 #define LOG_DEBUG(module, msg) \
 ::tools::Logger::instance().log(::tools::LogLevel::Debug, module, msg, __FILE__, __LINE__)
+#endif
 
 #define LOG_INFO(module, msg) \
 ::tools::Logger::instance().log(::tools::LogLevel::Info, module, msg, __FILE__, __LINE__)
