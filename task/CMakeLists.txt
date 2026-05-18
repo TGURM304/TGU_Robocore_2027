@@ -7,5 +7,5 @@ add_executable(test_camera test/test_camera.cpp)
 
 target_link_libraries(test_serial PRIVATE io tools)
 target_link_libraries(test_logger PRIVATE tools)
-target_link_libraries(test_foxglove PRIVATE tools)
-target_link_libraries(test_camera PRIVATE ${ARAVIS_LIBRARIES} ${OpenCV_LIBS})
+target_link_libraries(test_foxglove PRIVATE tools ${OpenCV_LIBS})
+target_link_libraries(test_camera PRIVATE tools ${OpenCV_LIBS} io)

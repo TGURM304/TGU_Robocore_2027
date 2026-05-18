@@ -18,5 +18,7 @@ target_link_libraries(io
 #        tools
         boost_system
         pthread
+        ${OpenCV_LIBS}
+        ${ARAVIS_LIBRARIES}
 )
 
