@@ -81,9 +81,9 @@ namespace tools {
         switch (level) {
             case LogLevel::Debug: ss << "[DEBUG] ";
                 break;
-            case LogLevel::Info: ss << "[INFO ] ";
+            case LogLevel::Info: ss << "[INFO] ";
                 break;
-            case LogLevel::Warn: ss << "[WARN ] ";
+            case LogLevel::Warn: ss << "[WARN] ";
                 break;
             case LogLevel::Error: ss << "[ERROR] ";
                 break;

@@ -10,9 +10,13 @@
 #include <memory>
 #include <string>
 
+#include "opencv2/opencv.hpp"
+
 namespace tools {
     class FoxGloveComm {
     public:
+        static constexpr const char *MODULE = "FOXGLOVE_COMM";
+
         FoxGloveComm(const std::string &host = "0.0.0.0", uint16_t port = 8765);
 
         ~FoxGloveComm();
@@ -25,16 +29,19 @@ namespace tools {
 
         FoxGloveComm &operator=(FoxGloveComm &&) noexcept;
 
-        // 是否初始化成功
-        bool ok() const;
+        bool is_ok() const;
 
-        // 当前绑定参数
-        const std::string &host() const;
+        const std::string &get_host() const;
 
-        uint16_t port() const;
+        uint16_t get_port() const;
 
-        // 重新创建 server
-        bool reset(const std::string &host, uint16_t port);
+        bool create_image_channel(const std::string &topic);
+
+        bool publish_image(
+            const std::string &topic,
+            const cv::Mat &image,
+            uint64_t timestamp_ns,
+            const std::string &frame_id = "camera");
 
     private:
         struct Impl;
