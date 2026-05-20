@@ -17,7 +17,7 @@ namespace io {
     class HikRobot {
     public:
         explicit HikRobot(
-            std::string device_id = ""
+            std::string_view cfg_file_path = "./config/test.toml"
         );
 
         ~HikRobot();
@@ -36,6 +36,10 @@ namespace io {
 
         bool is_running() const;
 
+        void set_exposure(uint32_t exposure_ms) const;
+
+        void set_gain(uint8_t gain) const;
+
     private:
         bool init_camera();
 
@@ -48,8 +52,13 @@ namespace io {
             const char *where
         );
 
-    private:
         std::string device_id_;
+
+        uint32_t exposure_ms_ = 2000;
+
+        uint8_t gain_ = 5;
+
+        std::string_view cfg_file_path_;
 
         ArvCamera *camera_ = nullptr;
 
@@ -58,6 +67,8 @@ namespace io {
         unsigned int payload_ = 0;
 
         std::atomic<bool> running_{false};
+
+        static constexpr auto MODULE = "HIKROBOT";
     };
 }
 

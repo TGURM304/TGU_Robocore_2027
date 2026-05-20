@@ -4,12 +4,28 @@
 
 #include "hikrobot.hpp"
 
+#include "tools/logger.hpp"
+#include "tools/tomlpp.hpp"
+
 #include "arv.h"
 #include <iostream>
 
 namespace io {
-    HikRobot::HikRobot(std::string device_id)
-        : device_id_(std::move(device_id)) {
+    HikRobot::HikRobot(std::string_view file_path) : cfg_file_path_(file_path) {
+        auto config = toml::parse_file(file_path);
+
+        tools::LoggerConfig cfg{
+            .level = tools::LogLevel::Debug,
+            .enable_console = true,
+            .enable_file = false,
+            .file_path = "logs.txt"
+        };
+
+        device_id_ = config["camera"]["camera_id"].value_or("");
+
+        exposure_ms_ = config["camera"]["exposure_ms"].value_or(4000);
+
+        gain_ = config["camera"]["gain"].value_or(5);
     }
 
     HikRobot::~HikRobot() {
@@ -22,17 +38,10 @@ namespace io {
         const char *where
     ) {
         if (error != nullptr) {
-            std::cerr
-                    << where
-                    << " failed: "
-                    << error->message
-                    << std::endl;
-
+            LOG_ERROR(MODULE, "failed:{}", error->message);
             g_clear_error(&error);
-
             return true;
         }
-
         return false;
     }
 
@@ -54,10 +63,7 @@ namespace io {
         auto n_devices = arv_get_n_devices();
 
         if (n_devices <= 0) {
-            std::cerr
-                    << "No camera found"
-                    << std::endl;
-
+            LOG_ERROR(MODULE, "No camera found");
             return false;
         }
 
@@ -69,10 +75,7 @@ namespace io {
             id = device_id_.c_str();
         }
 
-        std::cout
-                << "Using device: "
-                << id
-                << std::endl;
+        LOG_INFO(MODULE, "Using device: {}", id);
 
         GError *error = nullptr;
 
@@ -81,22 +84,30 @@ namespace io {
             &error
         );
 
-        if (print_error_and_clear(
-                error,
-                "arv_camera_new"
-            ) || camera_ == nullptr) {
+        if (print_error_and_clear(error, "arv_camera_new") || camera_ == nullptr) {
             return false;
         }
 
         arv_camera_set_exposure_time(
             camera_,
-            2000.0,
+            exposure_ms_,
+            &error
+        );
+
+        arv_camera_set_gain(
+            camera_,
+            gain_,
             &error
         );
 
         print_error_and_clear(
             error,
             "set_exposure"
+        );
+
+        print_error_and_clear(
+            error,
+            "set_gain"
         );
 
         return true;
@@ -124,17 +135,11 @@ namespace io {
             &error
         );
 
-        if (print_error_and_clear(
-                error,
-                "get_payload"
-            ) || payload_ <= 0) {
+        if (print_error_and_clear(error, "get_payload") || payload_ <= 0) {
             return false;
         }
 
-        std::cout
-                << "Payload size: "
-                << payload_
-                << std::endl;
+        // std::cout << "Payload size: " << payload_ << std::endl;
 
         // buffer pool
         for (int i = 0; i < 10; ++i) {
@@ -171,9 +176,7 @@ namespace io {
 
         running_ = true;
 
-        std::cout
-                << "Camera streaming started"
-                << std::endl;
+        std::cout << "Camera streaming started" << std::endl;
 
         return true;
     }
@@ -298,5 +301,33 @@ namespace io {
 
             camera_ = nullptr;
         }
+    }
+
+    void HikRobot::set_exposure(const uint32_t exposure_ms) const {
+        GError *error = nullptr;
+        arv_camera_set_exposure_time(
+            camera_,
+            exposure_ms,
+            &error
+        );
+
+        print_error_and_clear(
+            error,
+            "set_exposure"
+        );
+    }
+
+    void HikRobot::set_gain(const uint8_t gain) const {
+        GError *error = nullptr;
+        arv_camera_set_gain(
+            camera_,
+            gain,
+            &error
+        );
+
+        print_error_and_clear(
+            error,
+            "set_exposure"
+        );
     }
 }

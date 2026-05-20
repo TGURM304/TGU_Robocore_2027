@@ -12,9 +12,10 @@ int main() {
         return -1;
     }
     std::cout << "foxglove ready at " << comm.get_host() << ":" << comm.get_port() << "\n";
+
     comm.create_image_channel("/image");
 
-    io::HikRobot camera("Hikrobot-2bdfA9648591-DA9648591");
+    io::HikRobot camera("../config/test.toml");
 
     if (!camera.init()) {
         return -1;
