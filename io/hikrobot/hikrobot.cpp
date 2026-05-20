@@ -139,7 +139,7 @@ namespace io {
             return false;
         }
 
-        // std::cout << "Payload size: " << payload_ << std::endl;
+        LOG_DEBUG(MODULE, "Payload size: {}", payload_);
 
         // buffer pool
         for (int i = 0; i < 10; ++i) {
@@ -176,7 +176,7 @@ namespace io {
 
         running_ = true;
 
-        std::cout << "Camera streaming started" << std::endl;
+        LOG_DEBUG(MODULE, "Camera streaming started");
 
         return true;
     }
