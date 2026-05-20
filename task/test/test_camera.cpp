@@ -11,7 +11,6 @@ int main() {
         std::cerr << "foxglove init failed\n";
         return -1;
     }
-    std::cout << "foxglove ready at " << comm.get_host() << ":" << comm.get_port() << "\n";
 
     comm.create_image_channel("/image");
 
