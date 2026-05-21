@@ -1,6 +1,6 @@
 // main.cpp
 
-#include "io/hikrobot/hikrobot.hpp"
+#include "io/aravis/aravis.hpp"
 #include "tools/foxglove_comm.hpp"
 
 #include <iostream>
@@ -14,7 +14,7 @@ int main() {
 
     comm.create_image_channel("/image");
 
-    io::HikRobot camera("../config/test.toml");
+    io::Aravis camera("../config/test.toml");
 
     if (!camera.init()) {
         return -1;

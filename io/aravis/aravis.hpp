@@ -2,8 +2,8 @@
 // Created by tgu on 2026/4/16.
 //
 
-#ifndef TGU_ROBOCORE_2027_HIKROBOT_HPP
-#define TGU_ROBOCORE_2027_HIKROBOT_HPP
+#ifndef TGU_ROBOCORE_2027_ARAVIS_HPP
+#define TGU_ROBOCORE_2027_ARAVIS_HPP
 
 #pragma once
 
@@ -14,13 +14,13 @@
 #include <string>
 
 namespace io {
-    class HikRobot {
+    class Aravis {
     public:
-        explicit HikRobot(
-            std::string_view cfg_file_path = "./config/test.toml"
+        explicit Aravis(
+            std::string_view cfg_file_path = ""
         );
 
-        ~HikRobot();
+        ~Aravis();
 
     public:
         bool init();
@@ -68,8 +68,8 @@ namespace io {
 
         std::atomic<bool> running_{false};
 
-        static constexpr auto MODULE = "HIKROBOT";
+        static constexpr auto MODULE = "ARAVIS";
     };
 }
 
-#endif //TGU_ROBOCORE_2027_HIKROBOT_HPP
+#endif //TGU_ROBOCORE_2027_ARAVIS_HPP
