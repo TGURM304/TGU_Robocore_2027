@@ -9,3 +9,8 @@ target_link_libraries(test_serial PRIVATE io tools)
 target_link_libraries(test_logger PRIVATE tools)
 target_link_libraries(test_foxglove PRIVATE tools ${OpenCV_LIBS})
 target_link_libraries(test_camera PRIVATE tools ${OpenCV_LIBS} io)
+
+# task
+add_executable(sentry sentry.cpp)
+
+target_link_libraries(sentry PRIVATE tools io ${OpenCV_LIBS} )
