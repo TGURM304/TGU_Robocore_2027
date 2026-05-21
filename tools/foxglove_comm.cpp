@@ -4,16 +4,34 @@
 
 #include "foxglove_comm.hpp"
 
+#include <cmath>
+#include <cstddef>
+#include <locale>
 #include <optional>
+#include <sstream>
+#include <unordered_map>
 #include <utility>
 
 #include "foxglove/server.hpp"
+#include "foxglove/schemas.hpp"
 #include "foxglove/channel.hpp"
 #include "foxglove/messages.hpp"
 #include "tools/logger.hpp"
 
 
 namespace tools {
+    namespace {
+        constexpr char FLOAT_JSON_SCHEMA[] = R"({
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "number"
+                }
+            },
+            "required": ["value"]
+        })";
+    }
+
     struct FoxGloveComm::Impl {
         std::string host;
         uint16_t port = 0;
@@ -21,13 +39,11 @@ namespace tools {
 
         std::optional<foxglove::WebSocketServer> server;
 
-        LoggerConfig cfg{
-            .level = LogLevel::Debug,
-            .enable_console = true,
-            .enable_file = false
-        };
+        LoggerConfig cfg{.level = LogLevel::Debug, .enable_console = true, .enable_file = false};
 
         std::unordered_map<std::string, foxglove::messages::CompressedImageChannel> image_channels;
+
+        std::unordered_map<std::string, foxglove::RawChannel> float_channels;
 
         Impl(const std::string &h, uint16_t p) : host(h), port(p) {
         }
@@ -37,11 +53,7 @@ namespace tools {
             server.reset();
 
             auto result = foxglove::WebSocketServer::create(
-                foxglove::WebSocketServerOptions{
-                    .host = host,
-                    .port = port
-                }
-            );
+                foxglove::WebSocketServerOptions{.host = host, .port = port});
 
             if (!result.has_value()) {
                 LOG_ERROR(MODULE, "Failed to create WebSocket server at {}:{}", host, port);
@@ -81,14 +93,12 @@ namespace tools {
     }
 
     // image
-    bool FoxGloveComm::create_image_channel(
-        const std::string &topic) {
+    bool FoxGloveComm::create_image_channel(const std::string &topic) {
         if (!impl_ || !impl_->ready) {
             return false;
         }
 
-        if (impl_->image_channels.find(topic) !=
-            impl_->image_channels.end()) {
+        if (impl_->image_channels.find(topic) != impl_->image_channels.end()) {
             LOG_WARN(MODULE, "Image channel '{}' already exists", topic);
             return false;
         }
@@ -106,7 +116,8 @@ namespace tools {
         return true;
     }
 
-    bool FoxGloveComm::publish_image(const std::string &topic, const cv::Mat &image, uint64_t timestamp_ns, const std::string &frame_id) {
+    bool FoxGloveComm::publish_image(const std::string &topic, const cv::Mat &image, uint64_t timestamp_ns,
+                                     const std::string &frame_id) {
         if (!impl_ || !impl_->ready) {
             return false;
         }
@@ -121,7 +132,7 @@ namespace tools {
         // OpenCV -> JPEG
         std::vector<uint8_t> jpeg_buffer;
 
-        if (!cv::imencode(".jpg", image,jpeg_buffer)) {
+        if (!cv::imencode(".jpg", image, jpeg_buffer)) {
             LOG_ERROR(MODULE, "Failed to encode image");
             return false;
         }
@@ -137,17 +148,14 @@ namespace tools {
         // uint8_t -> std::byte
         msg.data.resize(jpeg_buffer.size());
 
-        std::memcpy(
-            msg.data.data(),
-            jpeg_buffer.data(),
-            jpeg_buffer.size());
+        std::memcpy(msg.data.data(), jpeg_buffer.data(), jpeg_buffer.size());
 
         // timestamp
         foxglove::messages::Timestamp stamp;
 
         stamp.sec = static_cast<int64_t>(timestamp_ns / 1000000000ULL);
 
-        stamp.nsec =static_cast<uint32_t>(timestamp_ns % 1000000000ULL);
+        stamp.nsec = static_cast<uint32_t>(timestamp_ns % 1000000000ULL);
 
         msg.timestamp = stamp;
 
@@ -156,4 +164,82 @@ namespace tools {
 
         return true;
     }
+
+    // float
+    bool FoxGloveComm::create_float_channel(const std::string &topic) {
+        if (!impl_ || !impl_->ready) {
+            return false;
+        }
+
+        if (impl_->float_channels.find(topic) != impl_->float_channels.end()) {
+            LOG_WARN(MODULE, "Float channel '{}' already exists", topic);
+            return false;
+        }
+
+        if (impl_->image_channels.find(topic) != impl_->image_channels.end()) {
+            LOG_WARN(MODULE, "Topic '{}' already exists as an image channel", topic);
+            return false;
+        }
+
+        foxglove::Schema schema{
+            .name = "FloatValue",
+            .encoding = "jsonschema",
+            .data = reinterpret_cast<const std::byte *>(FLOAT_JSON_SCHEMA),
+            .data_len = sizeof(FLOAT_JSON_SCHEMA) - 1
+        };
+
+        auto result = foxglove::RawChannel::create(topic, "json", schema);
+
+        if (!result.has_value()) {
+            LOG_ERROR(MODULE, "Failed to create float channel '{}'", topic);
+            return false;
+        }
+
+        impl_->float_channels.emplace(topic, std::move(result.value()));
+
+        LOG_INFO(MODULE, "Created float channel '{}'", topic);
+        return true;
+    }
+
+    bool FoxGloveComm::publish_float(const std::string &topic, float value, uint64_t timestamp_ns) {
+        if (!impl_ || !impl_->ready) {
+            return false;
+        }
+
+        auto it = impl_->float_channels.find(topic);
+
+        if (it == impl_->float_channels.end()) {
+            LOG_ERROR(MODULE, "Float channel '{}' not found", topic);
+            return false;
+        }
+
+        if (!std::isfinite(value)) {
+            LOG_WARN(MODULE, "Skip non-finite float value on channel '{}'", topic);
+            return false;
+        }
+
+        std::ostringstream ss;
+        ss.imbue(std::locale::classic());
+        ss << "{\"value\":" << value << "}";
+
+        const std::string payload = ss.str();
+        std::optional<uint64_t> log_time = std::nullopt;
+
+        if (timestamp_ns != 0) {
+            log_time = timestamp_ns;
+        }
+
+        const auto error = it->second.log(
+            reinterpret_cast<const std::byte *>(payload.data()),
+            payload.size(),
+            log_time);
+
+        if (error != foxglove::FoxgloveError::Ok) {
+            LOG_ERROR(MODULE, "Failed to publish float channel '{}': {}", topic, foxglove::strerror(error));
+            return false;
+        }
+
+        return true;
+    }
+
 } // namespace tools

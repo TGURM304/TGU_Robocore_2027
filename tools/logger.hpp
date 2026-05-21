@@ -34,21 +34,14 @@ namespace tools {
 
         void init(const LoggerConfig &config);
 
-        void log(LogLevel level,
-                 const std::string &module,
-                 const std::string &msg,
-                 const char *file,
-                 int line);
+        void log(LogLevel level, const std::string &module, const std::string &msg, const char *file, int line);
 
     private:
         Logger() = default;
 
         ~Logger();
 
-        std::string format(LogLevel level,
-                           const std::string &module,
-                           const std::string &msg,
-                           const char *file,
+        std::string format(LogLevel level, const std::string &module, const std::string &msg, const char *file,
                            int line) const;
 
     private:

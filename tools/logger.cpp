@@ -37,11 +37,7 @@ namespace tools {
         }
     }
 
-    void Logger::log(LogLevel level,
-                     const std::string &module,
-                     const std::string &msg,
-                     const char *file,
-                     int line) {
+    void Logger::log(LogLevel level, const std::string &module, const std::string &msg, const char *file, int line) {
         if (level < level_) return;
 
         std::lock_guard<std::mutex> lock(mutex_);
@@ -57,10 +53,7 @@ namespace tools {
         }
     }
 
-    std::string Logger::format(LogLevel level,
-                               const std::string &module,
-                               const std::string &msg,
-                               const char *file,
+    std::string Logger::format(LogLevel level, const std::string &module, const std::string &msg, const char *file,
                                int line) const {
         using namespace std::chrono;
 
@@ -95,9 +88,7 @@ namespace tools {
         auto pos = f.find_last_of("/\\");
         if (pos != std::string::npos) f = f.substr(pos + 1);
 
-        ss << "[" << module << "] "
-                << "[" << f << ":" << line << "] "
-                << msg;
+        ss << "[" << module << "] " << "[" << f << ":" << line << "] " << msg;
 
         return ss.str();
     }

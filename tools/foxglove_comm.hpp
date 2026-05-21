@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <string>
 
@@ -42,6 +43,14 @@ namespace tools {
             const cv::Mat &image,
             uint64_t timestamp_ns,
             const std::string &frame_id = "camera");
+
+        bool create_float_channel(const std::string &topic);
+
+        bool publish_float(
+            const std::string &topic,
+            float value,
+            uint64_t timestamp_ns = 0);
+
 
     private:
         struct Impl;

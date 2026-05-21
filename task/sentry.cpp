@@ -9,8 +9,16 @@
 #include "tools/tomlpp.hpp"
 #include "io/hikrobot/hikrobot.hpp"
 
-
 #include <opencv2/opencv.hpp>
+
+#include <atomic>
+#include <chrono>
+#include <cmath>
+#include <exception>
+#include <memory>
+#include <thread>
+
+#include "tools/time.hpp"
 
 // 配置文件路径
 const auto CONFIG_PATH = "../config/sentry.toml";
@@ -80,27 +88,44 @@ void foxglove_thread() {
     }
 
     comm.create_image_channel("/raw_image");
+    comm.create_float_channel("/test");
 
-    cv::Mat resized;
+    // 两个常驻任务分别负责图像和数据发布，互不阻塞。
+    BS::thread_pool foxglove_pool(2);
 
-    // 帧数设定
-    constexpr auto SEND_INTERVAL = std::chrono::milliseconds(10);
+    foxglove_pool.detach_task([&comm] {
+        while (running) {
+            auto frame_ = frame.load();
+
+            if (frame_) {
+                try {
+                    cv::Mat resized;
+                    cv::resize(frame_->image, resized, cv::Size(), 0.5, 0.5, cv::INTER_AREA);
+                    comm.publish_image("/raw_image", resized, frame_->timestamp_ns, "camera_raw_frame");
+                } catch (const std::exception &e) {
+                    LOG_ERROR(MODULE, "async image publish failed: {}", e.what());
+                } catch (...) {
+                    LOG_ERROR(MODULE, "async image publish failed: unknown exception");
+                }
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+    });
+
+    foxglove_pool.detach_task([&comm] {
+        while (running) {
+            const uint64_t timestamp_ns = tools::steady_time_ns();
+            const float value = static_cast<float>(std::sin(6.283 * static_cast<double>(timestamp_ns) * 1e-9));
+
+            comm.publish_float("/test", value, timestamp_ns);
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    });
 
     while (running) {
-        auto loop_start = std::chrono::steady_clock::now();
-
-        auto frame_ = frame.load();
-
-        if (!frame_) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            continue;
-        }
-
-        cv::resize(frame_->image, resized, cv::Size(), 0.5, 0.5, cv::INTER_AREA);
-
-        comm.publish_image("/raw_image", resized, frame_->timestamp_ns, "camera_raw_frame");
-
-        std::this_thread::sleep_until(loop_start + SEND_INTERVAL);
+        std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 }
 
