@@ -4,7 +4,8 @@ title = "sentry"
 enemy_color = "blue" # blue or red
 
 [camera]
-camera_id = "Hikrobot-2bdfA9648591-DA9648591"
+#camera_id = "Hikrobot-2bdfA9648591-DA9648591"
+camera_id = "DA9648591"
 #camera_id = ""
 exposure_ms = 4000
 gain = 10

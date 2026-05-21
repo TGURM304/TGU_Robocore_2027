@@ -8,6 +8,7 @@
 #include "tools/logger.hpp"
 #include "tools/tomlpp.hpp"
 #include "io/aravis/aravis.hpp"
+#include "io/hikrobot/hikrobot.hpp"
 
 
 #include <opencv2/opencv.hpp>
@@ -20,10 +21,7 @@ std::atomic_bool running = true;
 
 // logger
 tools::LoggerConfig cfg{
-    .level = tools::LogLevel::Debug,
-    .enable_console = true,
-    .enable_file = false,
-    .file_path = "logs.txt"
+    .level = tools::LogLevel::Debug, .enable_console = true, .enable_file = false, .file_path = "logs.txt"
 };
 static constexpr const char *MODULE = "SENTRY_MAIN";
 
@@ -32,11 +30,12 @@ struct Frame {
     cv::Mat image;
     uint64_t timestamp_ns;
 };
+
 std::atomic<std::shared_ptr<Frame> > frame{nullptr};
 
 // 相机采集线程
 void camera_thread() {
-    io::Aravis camera(CONFIG_PATH);
+    io::Hikrobot camera(CONFIG_PATH);
     while (running) {
         if (!camera.init()) {
             LOG_ERROR(MODULE, "camera init failed");
@@ -65,16 +64,11 @@ void camera_thread() {
                 continue;
             }
 
-            frame.store(std::make_shared<Frame>(
-                Frame{
-                    .image = image.clone(),
-                    .timestamp_ns = timestamp_ns
-                }
-            ));
-            std::this_thread::sleep_for(std::chrono::seconds(5));
+            frame.store(std::make_shared<Frame>(Frame{.image = image.clone(), .timestamp_ns = timestamp_ns}));
+            std::this_thread::sleep_for(std::chrono::microseconds(1));
         }
     }
-    LOG_INFO(MODULE, "camera thread stopped");
+    LOG_INFO(MODULE, "Camera thread stopped");
 }
 
 // foxglove调试线程
@@ -103,8 +97,7 @@ void foxglove_thread() {
             continue;
         }
 
-        cv::resize(frame_->image, resized, cv::Size(), 0.5, 0.5, cv::INTER_AREA
-        );
+        cv::resize(frame_->image, resized, cv::Size(), 0.5, 0.5, cv::INTER_AREA);
 
         comm.publish_image("/raw_image", resized, frame_->timestamp_ns, "camera_raw_frame");
 
@@ -116,7 +109,7 @@ int main() {
     tools::Logger::instance().init(cfg);
 
     std::jthread camera(camera_thread);
-    // std::jthread foxglove(foxglove_thread);
+    std::jthread foxglove(foxglove_thread);
 
     while (running) {
         std::this_thread::sleep_for(std::chrono::seconds(100));
