@@ -36,7 +36,7 @@ namespace io {
 
         bool is_running() const;
 
-        void set_exposure(uint32_t exposure_ms) const;
+        void set_exposure(uint32_t exposure_us) const;
 
         void set_gain(uint8_t gain) const;
 
@@ -54,7 +54,7 @@ namespace io {
 
         std::string device_id_;
 
-        uint32_t exposure_ms_ = 2000;
+        uint32_t exposure_us_ = 2000;
 
         uint8_t gain_ = 5;
 

@@ -5,6 +5,7 @@
 #include "aravis.hpp"
 
 #include "tools/logger.hpp"
+#include "tools/time.hpp"
 #include "tools/tomlpp.hpp"
 
 #include "arv.h"
@@ -22,7 +23,7 @@ namespace io {
 
         device_id_ = config["camera"]["camera_id"].value_or("");
 
-        exposure_ms_ = config["camera"]["exposure_ms"].value_or(4000);
+        exposure_us_ = config["camera"]["exposure_us"].value_or(4000);
 
         gain_ = config["camera"]["gain"].value_or(5);
     }
@@ -84,7 +85,7 @@ namespace io {
             return false;
         }
 
-        arv_camera_set_exposure_time(camera_, exposure_ms_, &error);
+        arv_camera_set_exposure_time(camera_, exposure_us_, &error);
 
         arv_camera_set_gain(camera_, gain_, &error);
 
@@ -190,7 +191,7 @@ namespace io {
 
         cv::cvtColor(raw, image, cv::COLOR_BayerRG2RGB);
 
-        timestamp_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+        timestamp_ns = tools::steady_time_ns();
 
         arv_stream_push_buffer(stream_, buffer);
         return true;
@@ -212,9 +213,9 @@ namespace io {
         }
     }
 
-    void Aravis::set_exposure(const uint32_t exposure_ms) const {
+    void Aravis::set_exposure(const uint32_t exposure_us) const {
         GError *error = nullptr;
-        arv_camera_set_exposure_time(camera_, exposure_ms, &error);
+        arv_camera_set_exposure_time(camera_, exposure_us, &error);
 
         print_error_and_clear(error, "set_exposure");
     }

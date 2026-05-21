@@ -13,11 +13,11 @@ int main() {
 
     std::string title = config["title"].value_or("default");
 
-    double exposure_ms = config["camera"]["exposure_ms"].value_or(0);
+    double exposure_us = config["camera"]["exposure_us"].value_or(0);
     double gain = config["camera"]["gain"].value_or(0.0);
 
     std::cout << title << std::endl;
-    std::cout << "exposure_ms: " << exposure_ms << std::endl;
+    std::cout << "exposure_us: " << exposure_us << std::endl;
     std::cout << "gain: " << gain << std::endl;
 
     auto arr1 = config["camera"]["camera_matrix"].as_array();

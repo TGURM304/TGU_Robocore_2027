@@ -4,11 +4,11 @@
 
 #include "hikrobot.hpp"
 
-#include <chrono>
 #include <cstdlib>
 #include <libusb-1.0/libusb.h>
 
 #include "tools/logger.hpp"
+#include "tools/time.hpp"
 #include "tools/tomlpp.hpp"
 
 namespace io {
@@ -18,7 +18,7 @@ namespace io {
 
         device_id_ = config["camera"]["camera_id"].value_or("");
 
-        exposure_ms_ = config["camera"]["exposure_us"].value_or(4000.);
+        exposure_us_ = config["camera"]["exposure_us"].value_or(4000.0f);
 
         gain_ = config["camera"]["gain"].value_or(5.0f);
 
@@ -164,7 +164,7 @@ namespace io {
         MV_CC_SetEnumValue(camera_handle_, "ExposureAuto", 0);
 
         // 曝光时间
-        n_ret_ = MV_CC_SetFloatValue(camera_handle_, "ExposureTime", exposure_ms_);
+        n_ret_ = MV_CC_SetFloatValue(camera_handle_, "ExposureTime", exposure_us_);
         if (n_ret_ != MV_OK) {
             LOG_ERROR(MODULE, "MV_CC_SetExposureTime fail, n_ret: {:#x}", n_ret_);
             return false;
@@ -271,8 +271,7 @@ namespace io {
 
         tmp.copyTo(image);
 
-        timestamp_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
-            std::chrono::steady_clock::now().time_since_epoch()).count();
+        timestamp_ns = tools::steady_time_ns();
 
         n_ret_ = MV_CC_FreeImageBuffer(camera_handle_, &frameOut_);
 

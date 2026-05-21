@@ -4,6 +4,7 @@
 - CRC校验
 - Logger日志
 - toml++
+- time 统一时间戳工具
 
 ## 简介与使用说明
 
@@ -64,4 +65,19 @@ LOG_WARN(MODULE, "value={}", 42);
 ### 3、tomlpp
 
 ---
-### 4、foxglove_comm
+### 4、time
+
+`tools/time.hpp` 提供项目统一时间戳函数：
+
+```cpp
+#include "tools/time.hpp"
+
+uint64_t frame_timestamp_ns = tools::steady_time_ns();
+uint64_t unix_timestamp_ns = tools::system_time_ns();
+```
+
+- `tools::steady_time_ns()`：单调时钟，单位 ns，推荐用于相机帧时间戳、帧间隔、延迟统计、自瞄预测等内部时间计算。
+- `tools::system_time_ns()`：系统 Unix 时间戳，单位 ns，推荐用于需要和真实世界时间对齐的日志、录包、外部系统同步。
+
+---
+### 5、foxglove_comm

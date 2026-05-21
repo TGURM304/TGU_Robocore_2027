@@ -58,7 +58,7 @@ namespace io {
 
         uint32_t height_ = 0;
 
-        uint exposure_ms_ = 1;
+        float exposure_us_ = 4000.0f;
 
         float gain_ = 5.0f;
 

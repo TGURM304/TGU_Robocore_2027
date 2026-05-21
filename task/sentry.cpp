@@ -7,7 +7,6 @@
 #include "tools/foxglove_comm.hpp"
 #include "tools/logger.hpp"
 #include "tools/tomlpp.hpp"
-#include "io/aravis/aravis.hpp"
 #include "io/hikrobot/hikrobot.hpp"
 
 
@@ -112,7 +111,7 @@ int main() {
     std::jthread foxglove(foxglove_thread);
 
     while (running) {
-        std::this_thread::sleep_for(std::chrono::seconds(100));
+        std::this_thread::sleep_for(std::chrono::seconds(1));
     }
     return 0;
 }
