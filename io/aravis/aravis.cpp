@@ -11,7 +11,7 @@
 
 namespace io {
     Aravis::Aravis(std::string_view file_path) : cfg_file_path_(file_path) {
-        auto config = toml::parse_file(file_path);
+        auto config = toml::parse_file(cfg_file_path_);
 
         tools::LoggerConfig cfg{
             .level = tools::LogLevel::Debug,
@@ -190,7 +190,7 @@ namespace io {
 
         cv::cvtColor(raw, image, cv::COLOR_BayerRG2RGB);
 
-        timestamp_ns = (uint64_t) g_get_monotonic_time() * 1000ULL;
+        timestamp_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
 
         arv_stream_push_buffer(stream_, buffer);
         return true;
