@@ -11,6 +11,9 @@
 #include <memory>
 #include <string>
 
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+
 #include "opencv2/opencv.hpp"
 
 namespace tools {
@@ -38,19 +41,17 @@ namespace tools {
 
         bool create_image_channel(const std::string &topic);
 
-        bool publish_image(
-            const std::string &topic,
-            const cv::Mat &image,
-            uint64_t timestamp_ns,
-            const std::string &frame_id = "camera");
+        bool publish_image(const std::string &topic, const cv::Mat &image, uint64_t timestamp_ns,
+                           const std::string &frame_id = "camera");
 
         bool create_float_channel(const std::string &topic);
 
-        bool publish_float(
-            const std::string &topic,
-            float value,
-            uint64_t timestamp_ns = 0);
+        bool publish_float(const std::string &topic, float value, uint64_t timestamp_ns = 0);
 
+        bool create_point_cloud_channel(const std::string &topic);
+
+        bool publish_point_cloud(const std::string &topic, const pcl::PointCloud<pcl::PointXYZ> &cloud,
+                                 uint64_t timestamp_ns, const std::string &frame_id = "cloud_map");
 
     private:
         struct Impl;

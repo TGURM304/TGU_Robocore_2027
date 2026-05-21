@@ -12,6 +12,7 @@ sudo apt install libopencv-dev
 sudo apt install libaravis-dev aravis-tools
 sudo apt install aravis-tools-cli
 sudo apt install libusb-1.0-0-dev
+sudo apt install -y libpcl-dev libeigen3-dev
 ```
 
 ```

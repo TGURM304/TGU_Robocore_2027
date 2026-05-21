@@ -12,17 +12,19 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
 find_package(Boost CONFIG REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(Eigen3 REQUIRED)
+find_package(PCL REQUIRED COMPONENTS common)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(ARAVIS REQUIRED aravis-0.8)
 
-#find_package(Eigen3 REQUIRED)
-
 include_directories(${PROJECT_SOURCE_DIR})
 include_directories(${ARAVIS_INCLUDE_DIRS})
+include_directories(${PCL_INCLUDE_DIRS})
+add_definitions(${PCL_DEFINITIONS})
 
 # ===== 子模块 =====
+add_subdirectory(tools)
 add_subdirectory(io)
 #add_subdirectory(app)
 add_subdirectory(task)
-add_subdirectory(tools)
