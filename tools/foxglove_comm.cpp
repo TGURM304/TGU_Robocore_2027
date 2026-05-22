@@ -34,7 +34,7 @@ namespace tools {
         })";
 
         constexpr uint32_t POINT_CLOUD_FLOAT32_TYPE = 7;
-        constexpr uint32_t POINT_CLOUD_FIELD_COUNT = 3;
+        constexpr uint32_t POINT_CLOUD_FIELD_COUNT = 4;
         constexpr uint32_t POINT_CLOUD_POINT_STRIDE = POINT_CLOUD_FIELD_COUNT * sizeof(float);
 
         foxglove::messages::Timestamp make_timestamp(uint64_t timestamp_ns) {
@@ -310,8 +310,8 @@ namespace tools {
         return true;
     }
 
-    bool FoxGloveComm::publish_point_cloud(const std::string &topic, const pcl::PointCloud<pcl::PointXYZ> &cloud,
-                                           uint64_t timestamp_ns, const std::string &frame_id) {
+    bool FoxGloveComm::publish_point_cloud(const std::string &topic, const pcl::PointCloud<pcl::PointXYZI> &cloud,
+                                            uint64_t timestamp_ns, const std::string &frame_id) {
         if (!impl_ || !impl_->ready) {
             return false;
         }
@@ -323,20 +323,22 @@ namespace tools {
             return false;
         }
 
-        std::vector<float> xyz_data;
-        xyz_data.reserve(cloud.points.size() * POINT_CLOUD_FIELD_COUNT);
+        std::vector<float> xyzi_data;
+        xyzi_data.reserve(cloud.points.size() * POINT_CLOUD_FIELD_COUNT);
 
         std::size_t skipped_count = 0;
 
         for (const auto &point: cloud.points) {
-            if (!std::isfinite(point.x) || !std::isfinite(point.y) || !std::isfinite(point.z)) {
+            if (!std::isfinite(point.x) || !std::isfinite(point.y) || !std::isfinite(point.z) ||
+                !std::isfinite(point.intensity)) {
                 ++skipped_count;
                 continue;
             }
 
-            xyz_data.emplace_back(point.x);
-            xyz_data.emplace_back(point.y);
-            xyz_data.emplace_back(point.z);
+            xyzi_data.emplace_back(point.x);
+            xyzi_data.emplace_back(point.y);
+            xyzi_data.emplace_back(point.z);
+            xyzi_data.emplace_back(point.intensity);
         }
 
         if (skipped_count > 0) {
@@ -350,11 +352,12 @@ namespace tools {
         msg.fields.emplace_back(make_float32_field("x", 0));
         msg.fields.emplace_back(make_float32_field("y", sizeof(float)));
         msg.fields.emplace_back(make_float32_field("z", 2 * sizeof(float)));
+        msg.fields.emplace_back(make_float32_field("intensity", 3 * sizeof(float)));
 
-        msg.data.resize(xyz_data.size() * sizeof(float));
+        msg.data.resize(xyzi_data.size() * sizeof(float));
 
-        if (!xyz_data.empty()) {
-            std::memcpy(msg.data.data(), xyz_data.data(), msg.data.size());
+        if (!xyzi_data.empty()) {
+            std::memcpy(msg.data.data(), xyzi_data.data(), msg.data.size());
         }
 
         it->second.log(msg);

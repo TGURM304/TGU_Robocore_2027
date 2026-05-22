@@ -50,8 +50,8 @@ namespace tools {
 
         bool create_point_cloud_channel(const std::string &topic);
 
-        bool publish_point_cloud(const std::string &topic, const pcl::PointCloud<pcl::PointXYZ> &cloud,
-                                 uint64_t timestamp_ns, const std::string &frame_id = "cloud_map");
+        bool publish_point_cloud(const std::string &topic, const pcl::PointCloud<pcl::PointXYZI> &cloud,
+                                  uint64_t timestamp_ns, const std::string &frame_id = "cloud_map");
 
     private:
         struct Impl;
