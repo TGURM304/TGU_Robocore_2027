@@ -14,6 +14,8 @@
 #include <utility>
 #include <vector>
 
+#include <Eigen/Geometry>
+
 #include "foxglove/server.hpp"
 #include "foxglove/schemas.hpp"
 #include "foxglove/channel.hpp"
@@ -51,6 +53,30 @@ namespace tools {
             field.type = static_cast<decltype(field.type)>(POINT_CLOUD_FLOAT32_TYPE);
             return field;
         }
+
+        foxglove::messages::Vector3 make_vector3(const Eigen::Vector3d &src) {
+            foxglove::messages::Vector3 dst;
+            dst.x = src.x();
+            dst.y = src.y();
+            dst.z = src.z();
+            return dst;
+        }
+
+        foxglove::messages::Quaternion make_quaternion(const Eigen::Quaterniond &src) {
+            foxglove::messages::Quaternion dst;
+            dst.x = src.x();
+            dst.y = src.y();
+            dst.z = src.z();
+            dst.w = src.w();
+            return dst;
+        }
+
+        foxglove::messages::Pose make_pose(const Eigen::Isometry3d &src) {
+            foxglove::messages::Pose dst;
+            dst.position = make_vector3(src.translation());
+            dst.orientation = make_quaternion(Eigen::Quaterniond(src.linear()));
+            return dst;
+        }
     }
 
     struct FoxGloveComm::Impl {
@@ -67,6 +93,12 @@ namespace tools {
         std::unordered_map<std::string, foxglove::RawChannel> float_channels;
 
         std::unordered_map<std::string, foxglove::messages::PointCloudChannel> point_cloud_channels;
+
+        std::unordered_map<std::string, foxglove::messages::PoseInFrameChannel> pose_channels;
+
+        std::unordered_map<std::string, foxglove::messages::PosesInFrameChannel> path_channels;
+
+        std::unordered_map<std::string, foxglove::messages::FrameTransformChannel> transform_channels;
 
         Impl(const std::string &h, uint16_t p) : host(h), port(p) {
         }
@@ -311,7 +343,7 @@ namespace tools {
     }
 
     bool FoxGloveComm::publish_point_cloud(const std::string &topic, const pcl::PointCloud<pcl::PointXYZI> &cloud,
-                                            uint64_t timestamp_ns, const std::string &frame_id) {
+                                             uint64_t timestamp_ns, const std::string &frame_id) {
         if (!impl_ || !impl_->ready) {
             return false;
         }
@@ -362,6 +394,136 @@ namespace tools {
 
         it->second.log(msg);
 
+        return true;
+    }
+
+    bool FoxGloveComm::create_pose_channel(const std::string &topic) {
+        if (!impl_ || !impl_->ready) {
+            return false;
+        }
+
+        if (impl_->pose_channels.find(topic) != impl_->pose_channels.end()) {
+            LOG_WARN(MODULE, "Pose channel '{}' already exists", topic);
+            return false;
+        }
+
+        auto result = foxglove::messages::PoseInFrameChannel::create(topic);
+        if (!result.has_value()) {
+            LOG_ERROR(MODULE, "Failed to create pose channel '{}'", topic);
+            return false;
+        }
+
+        impl_->pose_channels.emplace(topic, std::move(result.value()));
+        LOG_INFO(MODULE, "Created pose channel '{}'", topic);
+        return true;
+    }
+
+    bool FoxGloveComm::publish_pose(const std::string &topic, const Eigen::Isometry3d &pose,
+                                     uint64_t timestamp_ns, const std::string &frame_id) {
+        if (!impl_ || !impl_->ready) {
+            return false;
+        }
+
+        auto it = impl_->pose_channels.find(topic);
+        if (it == impl_->pose_channels.end()) {
+            LOG_ERROR(MODULE, "Pose channel '{}' not found", topic);
+            return false;
+        }
+
+        foxglove::messages::PoseInFrame msg;
+        msg.timestamp = make_timestamp(timestamp_ns);
+        msg.frame_id = frame_id;
+        msg.pose = make_pose(pose);
+        it->second.log(msg);
+        return true;
+    }
+
+    bool FoxGloveComm::create_path_channel(const std::string &topic) {
+        if (!impl_ || !impl_->ready) {
+            return false;
+        }
+
+        if (impl_->path_channels.find(topic) != impl_->path_channels.end()) {
+            LOG_WARN(MODULE, "Path channel '{}' already exists", topic);
+            return false;
+        }
+
+        auto result = foxglove::messages::PosesInFrameChannel::create(topic);
+        if (!result.has_value()) {
+            LOG_ERROR(MODULE, "Failed to create path channel '{}'", topic);
+            return false;
+        }
+
+        impl_->path_channels.emplace(topic, std::move(result.value()));
+        LOG_INFO(MODULE, "Created path channel '{}'", topic);
+        return true;
+    }
+
+    bool FoxGloveComm::publish_path(const std::string &topic, const std::vector<Eigen::Isometry3d> &poses,
+                                     uint64_t timestamp_ns, const std::string &frame_id) {
+        if (!impl_ || !impl_->ready) {
+            return false;
+        }
+
+        auto it = impl_->path_channels.find(topic);
+        if (it == impl_->path_channels.end()) {
+            LOG_ERROR(MODULE, "Path channel '{}' not found", topic);
+            return false;
+        }
+
+        foxglove::messages::PosesInFrame msg;
+        msg.timestamp = make_timestamp(timestamp_ns);
+        msg.frame_id = frame_id;
+        msg.poses.reserve(poses.size());
+        for (const auto &pose: poses) {
+            msg.poses.emplace_back(make_pose(pose));
+        }
+
+        it->second.log(msg);
+        return true;
+    }
+
+    bool FoxGloveComm::create_transform_channel(const std::string &topic) {
+        if (!impl_ || !impl_->ready) {
+            return false;
+        }
+
+        if (impl_->transform_channels.find(topic) != impl_->transform_channels.end()) {
+            LOG_WARN(MODULE, "Transform channel '{}' already exists", topic);
+            return false;
+        }
+
+        auto result = foxglove::messages::FrameTransformChannel::create(topic);
+        if (!result.has_value()) {
+            LOG_ERROR(MODULE, "Failed to create transform channel '{}'", topic);
+            return false;
+        }
+
+        impl_->transform_channels.emplace(topic, std::move(result.value()));
+        LOG_INFO(MODULE, "Created transform channel '{}'", topic);
+        return true;
+    }
+
+    bool FoxGloveComm::publish_transform(const std::string &topic, const Eigen::Isometry3d &parent_T_child,
+                                          uint64_t timestamp_ns, const std::string &parent_frame_id,
+                                          const std::string &child_frame_id) {
+        if (!impl_ || !impl_->ready) {
+            return false;
+        }
+
+        auto it = impl_->transform_channels.find(topic);
+        if (it == impl_->transform_channels.end()) {
+            LOG_ERROR(MODULE, "Transform channel '{}' not found", topic);
+            return false;
+        }
+
+        foxglove::messages::FrameTransform msg;
+        msg.timestamp = make_timestamp(timestamp_ns);
+        msg.parent_frame_id = parent_frame_id;
+        msg.child_frame_id = child_frame_id;
+        msg.translation = make_vector3(parent_T_child.translation());
+        msg.rotation = make_quaternion(Eigen::Quaterniond(parent_T_child.linear()));
+        it->second.log(msg);
         return true;
     }
 } // namespace tools

@@ -10,7 +10,9 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <vector>
 
+#include <Eigen/Geometry>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
@@ -51,7 +53,23 @@ namespace tools {
         bool create_point_cloud_channel(const std::string &topic);
 
         bool publish_point_cloud(const std::string &topic, const pcl::PointCloud<pcl::PointXYZI> &cloud,
-                                  uint64_t timestamp_ns, const std::string &frame_id = "cloud_map");
+                                   uint64_t timestamp_ns, const std::string &frame_id = "cloud_map");
+
+        bool create_pose_channel(const std::string &topic);
+
+        bool publish_pose(const std::string &topic, const Eigen::Isometry3d &pose, uint64_t timestamp_ns,
+                          const std::string &frame_id = "odom");
+
+        bool create_path_channel(const std::string &topic);
+
+        bool publish_path(const std::string &topic, const std::vector<Eigen::Isometry3d> &poses,
+                          uint64_t timestamp_ns, const std::string &frame_id = "odom");
+
+        bool create_transform_channel(const std::string &topic);
+
+        bool publish_transform(const std::string &topic, const Eigen::Isometry3d &parent_T_child,
+                               uint64_t timestamp_ns, const std::string &parent_frame_id,
+                               const std::string &child_frame_id);
 
     private:
         struct Impl;
