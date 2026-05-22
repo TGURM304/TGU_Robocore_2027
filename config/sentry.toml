@@ -15,3 +15,54 @@ distort_coeffs = [-0.062465172400315981, 0.10305943039166041, 0.0038821849203493
 
 [mid360_driver]
 host_ip = "192.168.1.50"
+
+[point_lio]
+enabled = true
+lidar_type = 1
+scan_line = 6
+blind = 0.5
+con_frame = false
+con_frame_num = 1
+cut_frame = false
+cut_frame_time_interval = 0.1
+time_diff_lidar_to_imu = 0.0
+imu_en = true
+extrinsic_est_en = false
+use_imu_as_input = false
+space_down_sample = true
+publish_odometry_without_downsample = false
+imu_time_inte = 0.005
+lidar_time_inte = 0.1
+satu_acc = 3.0
+satu_gyro = 35.0
+acc_norm = 1.0
+lidar_meas_cov = 0.01
+acc_cov_output = 500.0
+gyr_cov_output = 1000.0
+b_acc_cov = 0.0001
+b_gyr_cov = 0.0001
+imu_meas_acc_cov = 0.1
+imu_meas_omg_cov = 0.1
+gyr_cov_input = 0.01
+acc_cov_input = 0.1
+plane_thr = 0.1
+match_s = 81.0
+ivox_grid_resolution = 2.0
+ivox_nearby_type = 6
+filter_size_surf_min = 0.2
+filter_size_map_min = 0.4
+init_map_size = 10
+det_range = 100.0
+fov_degree = 180.0
+gravity = [0.0, 0.0, -9.81]
+gravity_init = [0.0, 0.0, -9.81]
+extrinsic_t = [0.011, 0.02329, -0.04412]
+extrinsic_r = [1.0, 0.0, 0.0,
+               0.0, 1.0, 0.0,
+               0.0, 0.0, 1.0]
+path_en = true
+scan_publish_en = true
+scan_bodyframe_pub_en = true
+pcd_save_en = false
+pcd_save_interval = -1
+runtime_pos_log = false
