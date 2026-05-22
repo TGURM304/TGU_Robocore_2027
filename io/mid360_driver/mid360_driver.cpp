@@ -9,6 +9,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstdint>
+#include <utility>
 
 #include "tools/tomlpp.hpp"
 
@@ -120,6 +121,10 @@ namespace io {
             return received_size >= sizeof(DataHeader) && received_size - sizeof(DataHeader) >= expected_payload_size;
         }
 
+        double point_offset_seconds(const DataHeader &header, std::size_t point_index) {
+            return static_cast<double>(header.time_interval) * static_cast<double>(point_index) * 1e-9;
+        }
+
     }// namespace
 
     std::size_t IpAddressHasher::operator()(const asio::ip::address &addr) const noexcept {
@@ -138,13 +143,17 @@ namespace io {
 
     Mid360Driver::Mid360Driver(asio::io_context &io_context,
                                std::string_view cfg_file_path,
-                               const std::function<void(const asio::ip::address &lidar_ip, const std::vector<Point> &points, uint64_t timestamp_ns)> &on_receive_pointcloud,
-                               const std::function<void(const asio::ip::address &lidar_ip, const ImuMsg &imu_msg)> &on_receive_imu)
+                               PointCloudCallback on_receive_pointcloud,
+                               ImuCallback on_receive_imu,
+                               std::size_t pointcloud_callback_thread_count,
+                               std::size_t imu_callback_thread_count)
         : cfg_file_path_(cfg_file_path),
           receive_pointcloud_socket(io_context),
           receive_imu_socket(io_context),
-          on_receive_pointcloud(on_receive_pointcloud),
-          on_receive_imu(on_receive_imu) {
+          on_receive_pointcloud(std::move(on_receive_pointcloud)),
+          on_receive_imu(std::move(on_receive_imu)),
+          pointcloud_callback_pool(pointcloud_callback_thread_count),
+          imu_callback_pool(imu_callback_thread_count) {
         if (!cfg_file_path_.empty()) {
             auto config = toml::parse_file(std::string(cfg_file_path_));
             host_ip = asio::ip::make_address(config["mid360_driver"]["host_ip"].value_or("192.168.1.50"));
@@ -168,11 +177,14 @@ namespace io {
         ErrorCode error_code;
         receive_pointcloud_socket.close(error_code);
         receive_imu_socket.close(error_code);
+        pointcloud_callback_pool.wait();
+        imu_callback_pool.wait();
     }
 
     asio::awaitable<void> Mid360Driver::receive_pointcloud() {
         std::uint8_t buffer[kBufferSize];
         asio::ip::udp::endpoint sender_endpoint;
+        std::vector<Point> points;
         while (is_running.load(std::memory_order_relaxed)) {
             ErrorCode error_code;
             const std::size_t received_size = co_await receive_pointcloud_socket.async_receive_from(
@@ -209,8 +221,10 @@ namespace io {
                     if (!is_valid_point_tag(raw_point.tag)) {
                         continue;
                     }
+                    const double offset_time = point_offset_seconds(header, i);
                     Point point{};
-                    point.timestamp = header_timestamp;
+                    point.timestamp = header_timestamp + offset_time;
+                    point.offset_time = offset_time;
                     point.x = static_cast<float>(raw_point.x * 0.001);
                     point.y = static_cast<float>(raw_point.y * 0.001);
                     point.z = static_cast<float>(raw_point.z * 0.001);
@@ -227,8 +241,10 @@ namespace io {
                     if (!is_valid_point_tag(raw_point.tag)) {
                         continue;
                     }
+                    const double offset_time = point_offset_seconds(header, i);
                     Point point{};
-                    point.timestamp = header_timestamp;
+                    point.timestamp = header_timestamp + offset_time;
+                    point.offset_time = offset_time;
                     point.x = static_cast<float>(raw_point.x * 0.001);
                     point.y = static_cast<float>(raw_point.y * 0.001);
                     point.z = static_cast<float>(raw_point.z * 0.001);
@@ -245,8 +261,10 @@ namespace io {
                     if (!is_valid_point_tag(raw_point.tag)) {
                         continue;
                     }
+                    const double offset_time = point_offset_seconds(header, i);
                     Point point{};
-                    point.timestamp = header_timestamp;
+                    point.timestamp = header_timestamp + offset_time;
+                    point.offset_time = offset_time;
                     const double radius = raw_point.depth / 1000.0;
                     const double theta = raw_point.theta / 100.0 / 180.0 * kPi;
                     const double phi = raw_point.phi / 100.0 / 180.0 * kPi;
@@ -257,7 +275,10 @@ namespace io {
                     points.push_back(point);
                 }
             }
-            on_receive_pointcloud(sender_endpoint.address(), points, timestamp_ns);
+            const asio::ip::address lidar_ip = sender_endpoint.address();
+            pointcloud_callback_pool.detach_task([this, lidar_ip, points = std::move(points), timestamp_ns] {
+                on_receive_pointcloud(lidar_ip, points, timestamp_ns);
+            });
         }
         co_return;
     }
@@ -297,7 +318,10 @@ namespace io {
             imu_msg.linear_acceleration_x = raw_imu.linear_acceleration_x;
             imu_msg.linear_acceleration_y = raw_imu.linear_acceleration_y;
             imu_msg.linear_acceleration_z = raw_imu.linear_acceleration_z;
-            on_receive_imu(sender_endpoint.address(), imu_msg);
+            const asio::ip::address lidar_ip = sender_endpoint.address();
+            imu_callback_pool.detach_task([this, lidar_ip, imu_msg] {
+                on_receive_imu(lidar_ip, imu_msg);
+            });
         }
         co_return;
     }

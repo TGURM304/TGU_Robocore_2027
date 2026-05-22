@@ -31,11 +31,15 @@ namespace asio = boost::asio;
 #include <functional>
 #include <string_view>
 #include <unordered_map>
+#include <vector>
+
+#include "tools/BS_thread_pool.hpp"
 
 namespace io {
 
     struct Point {
         double timestamp;
+        double offset_time;
         float x, y, z;
         float intensity;
     };
@@ -55,22 +59,31 @@ namespace io {
     };
 
     class Mid360Driver {
+    public:
+        using PointCloudCallback = std::function<void(const asio::ip::address &lidar_ip,
+                                                       const std::vector<Point> &points,
+                                                       uint64_t timestamp_ns)>;
+        using ImuCallback = std::function<void(const asio::ip::address &lidar_ip, const ImuMsg &imu_msg)>;
+
     private:
         std::atomic<bool> is_running = true;
         std::string_view cfg_file_path_;
         asio::ip::address host_ip;
         asio::ip::udp::socket receive_pointcloud_socket;
         asio::ip::udp::socket receive_imu_socket;
-        std::vector<Point> points;
         std::unordered_map<asio::ip::address, double, IpAddressHasher> delta_time_map;
-        std::function<void(const asio::ip::address &lidar_ip, const std::vector<Point> &points, uint64_t timestamp_ns)> on_receive_pointcloud;
-        std::function<void(const asio::ip::address &lidar_ip, const ImuMsg &imu_msg)> on_receive_imu;
+        PointCloudCallback on_receive_pointcloud;
+        ImuCallback on_receive_imu;
+        BS::thread_pool<> pointcloud_callback_pool;
+        BS::thread_pool<> imu_callback_pool;
 
     public:
         Mid360Driver(asio::io_context &io_context,
                      std::string_view cfg_file_path,
-                     const std::function<void(const asio::ip::address &lidar_ip, const std::vector<Point> &points, uint64_t timestamp_ns)> &on_receive_pointcloud,
-                     const std::function<void(const asio::ip::address &lidar_ip, const ImuMsg &imu_msg)> &on_receive_imu);
+                     PointCloudCallback on_receive_pointcloud,
+                     ImuCallback on_receive_imu,
+                     std::size_t pointcloud_callback_thread_count = 1,
+                     std::size_t imu_callback_thread_count = 1);
 
         ~Mid360Driver();
 
