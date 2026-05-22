@@ -32,12 +32,13 @@ namespace asio = boost::asio;
 #include <string_view>
 #include <unordered_map>
 
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
-
 namespace io {
 
-    using PointCloud = pcl::PointCloud<pcl::PointXYZI>;
+    struct Point {
+        double timestamp;
+        float x, y, z;
+        float intensity;
+    };
 
     struct ImuMsg {
         double timestamp;
@@ -60,15 +61,15 @@ namespace io {
         asio::ip::address host_ip;
         asio::ip::udp::socket receive_pointcloud_socket;
         asio::ip::udp::socket receive_imu_socket;
-        PointCloud point_cloud;
+        std::vector<Point> points;
         std::unordered_map<asio::ip::address, double, IpAddressHasher> delta_time_map;
-        std::function<void(const asio::ip::address &lidar_ip, const PointCloud &point_cloud, uint64_t timestamp_ns)> on_receive_pointcloud;
+        std::function<void(const asio::ip::address &lidar_ip, const std::vector<Point> &points, uint64_t timestamp_ns)> on_receive_pointcloud;
         std::function<void(const asio::ip::address &lidar_ip, const ImuMsg &imu_msg)> on_receive_imu;
 
     public:
         Mid360Driver(asio::io_context &io_context,
                      std::string_view cfg_file_path,
-                     const std::function<void(const asio::ip::address &lidar_ip, const PointCloud &point_cloud, uint64_t timestamp_ns)> &on_receive_pointcloud,
+                     const std::function<void(const asio::ip::address &lidar_ip, const std::vector<Point> &points, uint64_t timestamp_ns)> &on_receive_pointcloud,
                      const std::function<void(const asio::ip::address &lidar_ip, const ImuMsg &imu_msg)> &on_receive_imu);
 
         ~Mid360Driver();

@@ -138,7 +138,7 @@ namespace io {
 
     Mid360Driver::Mid360Driver(asio::io_context &io_context,
                                std::string_view cfg_file_path,
-                               const std::function<void(const asio::ip::address &lidar_ip, const PointCloud &point_cloud, uint64_t timestamp_ns)> &on_receive_pointcloud,
+                               const std::function<void(const asio::ip::address &lidar_ip, const std::vector<Point> &points, uint64_t timestamp_ns)> &on_receive_pointcloud,
                                const std::function<void(const asio::ip::address &lidar_ip, const ImuMsg &imu_msg)> &on_receive_imu)
         : cfg_file_path_(cfg_file_path),
           receive_pointcloud_socket(io_context),
@@ -197,8 +197,8 @@ namespace io {
             }
 
             const uint64_t timestamp_ns = to_timestamp_ns(header_timestamp);
-            point_cloud.clear();
-            point_cloud.points.reserve(header.dot_num);
+            points.clear();
+            points.reserve(header.dot_num);
             if (header.data_type == DataType::kLivoxLidarCartesianCoordinateHighData) {
                 if (!has_payload_size(received_size, static_cast<std::size_t>(header.dot_num) * sizeof(CartesianHighPoint))) {
                     continue;
@@ -209,12 +209,13 @@ namespace io {
                     if (!is_valid_point_tag(raw_point.tag)) {
                         continue;
                     }
-                    pcl::PointXYZI point{};
+                    Point point{};
+                    point.timestamp = header_timestamp;
                     point.x = static_cast<float>(raw_point.x * 0.001);
                     point.y = static_cast<float>(raw_point.y * 0.001);
                     point.z = static_cast<float>(raw_point.z * 0.001);
                     point.intensity = static_cast<float>(raw_point.reflectivity);
-                    point_cloud.points.push_back(point);
+                    points.push_back(point);
                 }
             } else if (header.data_type == DataType::kLivoxLidarCartesianCoordinateLowData) {
                 if (!has_payload_size(received_size, static_cast<std::size_t>(header.dot_num) * sizeof(CartesianLowPoint))) {
@@ -226,12 +227,13 @@ namespace io {
                     if (!is_valid_point_tag(raw_point.tag)) {
                         continue;
                     }
-                    pcl::PointXYZI point{};
+                    Point point{};
+                    point.timestamp = header_timestamp;
                     point.x = static_cast<float>(raw_point.x * 0.001);
                     point.y = static_cast<float>(raw_point.y * 0.001);
                     point.z = static_cast<float>(raw_point.z * 0.001);
                     point.intensity = static_cast<float>(raw_point.reflectivity);
-                    point_cloud.points.push_back(point);
+                    points.push_back(point);
                 }
             } else if (header.data_type == DataType::kLivoxLidarSphericalCoordinateData) {
                 if (!has_payload_size(received_size, static_cast<std::size_t>(header.dot_num) * sizeof(SphericalPoint))) {
@@ -243,7 +245,8 @@ namespace io {
                     if (!is_valid_point_tag(raw_point.tag)) {
                         continue;
                     }
-                    pcl::PointXYZI point{};
+                    Point point{};
+                    point.timestamp = header_timestamp;
                     const double radius = raw_point.depth / 1000.0;
                     const double theta = raw_point.theta / 100.0 / 180.0 * kPi;
                     const double phi = raw_point.phi / 100.0 / 180.0 * kPi;
@@ -251,14 +254,10 @@ namespace io {
                     point.y = static_cast<float>(radius * std::sin(theta) * std::sin(phi));
                     point.z = static_cast<float>(radius * std::cos(theta));
                     point.intensity = static_cast<float>(raw_point.reflectivity);
-                    point_cloud.points.push_back(point);
+                    points.push_back(point);
                 }
             }
-            point_cloud.header.stamp = timestamp_ns;
-            point_cloud.width = static_cast<uint32_t>(point_cloud.points.size());
-            point_cloud.height = 1;
-            point_cloud.is_dense = true;
-            on_receive_pointcloud(sender_endpoint.address(), point_cloud, timestamp_ns);
+            on_receive_pointcloud(sender_endpoint.address(), points, timestamp_ns);
         }
         co_return;
     }

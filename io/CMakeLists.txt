@@ -2,8 +2,6 @@ cmake_minimum_required(VERSION 3.16)
 
 include(CheckIncludeFileCXX)
 
-find_package(Threads REQUIRED)
-
 check_include_file_cxx(asio.hpp MID360_DRIVER_HAS_STANDALONE_ASIO)
 
 # 创建目标 io
@@ -46,7 +44,6 @@ target_include_directories(io
 target_link_libraries(io
         PUBLIC
 #        tools
-        Threads::Threads
         boost_system
         pthread
         usb-1.0
